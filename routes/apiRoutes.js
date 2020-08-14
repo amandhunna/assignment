@@ -77,6 +77,10 @@ router.get("/order/:userId", async (req, res) => {
 router.put("/order", async (req, res) => {
     const { items, paid = false } = req.body;
     const { userId } = req.body;
+    const dataToUpdate = {
+        ...items ? { items } : {}, paid
+    }
+
     try {
         const find = await db.Orders.findAll({
             where: {
@@ -92,9 +96,7 @@ router.put("/order", async (req, res) => {
             res.send(order);
         }
 
-        const order = await db.Orders.update({
-            items, paid,
-        }, {
+        const order = await db.Orders.update(dataToUpdate, {
             where: {
                 [Op.and]: [{ userId }, { paid: false }]
             }
