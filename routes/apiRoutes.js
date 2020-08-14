@@ -27,108 +27,83 @@ router.post("/seed-tests", async (req, res) => {
 })
 
 // user 
-router.post("/user", (req, res) => {
-    db.Users.create({
-        username: req.body.username,
-        password: req.body.password,
-    }).then(user => res.send(user));
-})
-
 router.get("/users", (req, res) => {
     db.Users.findAll().then(users => res.send(users));
 })
 
 router.get("/user/:username/:password", (req, res) => {
+    const { username, password } = req.params;
     db.Users.findAll({
         where: {
-            username: req.params.username,
-            password: req.params.password,
+            [Op.and]: [{ username }, { password }]
         }
     }).then(users => res.send(users));
 })
 
-router.put("/user", (req, res) => {
-    db.Users.update({
-        password: req.body.password,
-    }, {
-        where: {
-            username: req.body.username
-        }
-    }).then(user => res.send(user));
-})
-
-router.delete("/user/:username", (req, res) => {
-    db.Users.destroy({
-        where: {
-            username: req.params.username,
-        }
-    }).then(user => res.send(user));
-})
-
-
 // test 
-router.post("/createtest", (req, res) => {
-    db.Tests.create({
-        category: req.body.category,
-        itemId: req.body.itemId,
-        itemName: req.body.itemName,
-        minPrice: req.body.minPrice,
-        popular: req.body.popular,
-        type: req.body.type,
-        objectID: req.body.objectID,
-    }).then(user => res.send(user));
-})
-
-router.get("/test/:itemname", (req, res) => {
-    db.Tests.findAll({
-        where: {
-            itemName: {
-                [Sequelize.Op.like]: `%${req.params.itemname}%`
-            },
+router.get("/tests", (req, res) => {
+    let { itemname } = req.query;
+    let query = {};
+    if (itemname) {
+        query = {
+            where: {
+                itemName: {
+                    [Sequelize.Op.like]: `%${itemname}%`
+                },
+            }
         }
-    }).then(test => res.send(test));
-})
+    }
+    db.Tests.findAll(query).then(test => res.send(test));
+});
 
 // order
-router.post("/order", async (req, res) => {
-    const order = await db.Orders.create({
-        userId: req.body.userId,
-        paid: req.body.paid,
-        items: req.body.item,
+
+router.get("/orders", (req, res) => {
+    db.Orders.findAll().then(order => res.send(order));
+});
+
+router.get("/order/:userId", async (req, res) => {
+    const userId = req.params.userId;
+
+    const order = await db.Orders.findAll({
+        where: {
+            [Op.and]: [{ paid: false }, { userId }]
+        },
     });
     res.send(order);
 });
 
 
-router.get("/orders", (req, res) => {
-    db.Orders.findAll().then(order => res.send(order));
-})
-
-router.get("/order/:orderId/:userId", (req, res) => {
-    const id = req.params.orderId;
-    const userId = req.params.userId;
-
-    db.Orders.findAll({
-        where: {
-            [Op.and]: [{ id }, { userId }]
-        },
-    }).then(order => res.send(order));
-})
-
-
 router.put("/order", async (req, res) => {
-    const items = req.body.items;
-    const paid = req.body.paid;
-    const id = req.body.orderId;
+    const { items, paid = false } = req.body;
+    const { userId } = req.body;
+    try {
+        const find = await db.Orders.findAll({
+            where: {
+                [Op.and]: [{ paid }, { userId }]
+            },
+        });
+        const length = find.length;
 
-    const order = await db.Orders.update({
-        items, paid,
-    }, {
-        where: {
-            id
+        if (!length) {
+            const order = await db.Orders.create({
+                userId, paid, items
+            });
+            res.send(order);
         }
-    });
-    res.send(order);
+
+        const order = await db.Orders.update({
+            items, paid,
+        }, {
+            where: {
+                [Op.and]: [{ userId }, { paid: false }]
+            }
+        });
+        res.send(order);
+    } catch (error) {
+        res.send({ "status": 400, error: error.message });
+    }
+
 })
 
 

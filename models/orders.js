@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BOOLEAN(false),
         },
         items: {
-            type: DataTypes.STRING()
+            type: DataTypes.STRING(5000)
         }
     })
     return orders;
